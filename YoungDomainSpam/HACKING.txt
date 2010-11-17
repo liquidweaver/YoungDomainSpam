@@ -1,0 +1,17 @@
+﻿How to write a recipient reject filter
+	http://msdn.microsoft.com/en-us/library/cc788132(EXCHG.80).aspx
+
+Implementing a transport agent
+	http://msdn.microsoft.com/en-us/library/aa579185.aspx
+
+You will need to reference the file Microsoft.Exchange.Data.Transport.dll in the Public folder of the 
+Microsoft Exchange server installation to resolve the import dependency.
+
+
+TODO:
+Grab all URL's from email body using URL regex, for each
+	Run a whois on domain in the URL (group 0 of regex)
+	Check if creation date very soon (less than 6 mos?)
+	if so, reject email. Perhaps throw on rejection.
+
+Might be nice to implement the whois URL, too-soon date, and maybe regex in a registry key.
