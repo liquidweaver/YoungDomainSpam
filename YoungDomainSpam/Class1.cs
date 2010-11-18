@@ -23,26 +23,91 @@ namespace MetroparkAgents
         }
     }
 
+    [Serializable()]
+    public class SpammyWhoisException : System.Exception
+    {
+        public SpammyWhoisException() : base() { }
+        public SpammyWhoisException(string message) : base(message) { }
+        public SpammyWhoisException(string message, System.Exception inner) : base(message, inner) { }
+        public SpammyWhoisException(string domain, string block_reason)
+            : base(domain)
+        {
+            this.m_domain = domain;
+            this.m_block_reason = block_reason;
+        }
+
+
+        // Constructor needed for serialization 
+        // when exception propagates from a remoting server to the client. 
+        protected SpammyWhoisException(System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) { }
+
+        public string Domain
+        {
+            get { return m_domain; }
+        }
+
+        public string BlockReason
+        {
+            get { return m_block_reason; }
+        }
+
+        private string m_domain;
+        private string m_block_reason;
+    }
+
+    [Serializable()]
+    public class CannotWhoisCreationException : System.Exception
+    {
+        public CannotWhoisCreationException() : base() { }
+        public CannotWhoisCreationException(string message) : base(message) { }
+        public CannotWhoisCreationException(string message, System.Exception inner) : base(message, inner) { }
+        public CannotWhoisCreationException(string domain, string whois_data)
+            : base(domain)
+        {
+            this.m_domain = domain;
+            this.m_whois_data = whois_data;
+        }
+
+        // Constructor needed for serialization 
+        // when exception propagates from a remoting server to the client. 
+        protected CannotWhoisCreationException(System.Runtime.Serialization.SerializationInfo info,
+            System.Runtime.Serialization.StreamingContext context) { }
+
+        public string Domain
+        {
+            get { return m_domain; }
+        }
+
+        public string WhoisData
+        {
+            get { return m_whois_data; }
+        }
+
+        private string m_domain;
+        private string m_whois_data;
+    }
+
     public class YoungDomainSpamAgent : SmtpReceiveAgent
     {
-        const string url_regex = "http\\://([a-zA-Z0-9\\-\\.]+\\.)*([a-zA-Z0-9\\-]+\\.[a-zA-Z]{2,4})(/\\S*)?";
-        const string creation_regex = "Creat[^:]*:\\s*([^\\s]*)";
+        const string url_regex = "http\\://([a-zA-Z0-9\\-\\.]+\\.)*([a-zA-Z0-9\\-]+\\.(?:[a-zA-Z]{2,4})|(?:co.uk))(/\\S*)?";
+        //const string creation_regex = "(?:(?:creat[^:]*:)|(?:created on))\\s*([\\w\\d\\-]+)";
+        const string creation_regex = "creat[^\\d]+(\\d+[\\w\\d\\-]+)";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
 
-        public string GetWhoisServer( string tld )
+        public string GetWhoisServer(string tld)
         {
-            if (use_whois_servers_net)
-            {
+            if ( use_whois_servers_net ) {
                 return tld + ".whois-servers.net";
             }
             else
                 return static_whois_server;
-        } 
+        }
 
         const string log_file = "C:\\metropark_agents\\yds.log";
         const int minimum_age = 200; //Age, in days, a domain must exist to no be considered 'young'
-        Dictionary<string, bool> known_domains = new Dictionary<string,bool>();
+        Dictionary<string, bool> known_domains = new Dictionary<string, bool>();
         int blocked = 0;
         int whois_errors = 0;
         int cached_hits = 0;
@@ -64,7 +129,6 @@ namespace MetroparkAgents
             known_domains.Add("gmail.com", false);
             known_domains.Add("google.com", false);
             known_domains.Add("facebook.com", false);
-            System.Data.SQLite.
         }
 
         private void OnEndOfDataHandler(
@@ -76,8 +140,7 @@ namespace MetroparkAgents
             bodyAsText = reader.ReadToEnd();
             reader.Close();
 
-            if (this.ShouldBlockMessage(bodyAsText, e.MailItem.Message.Subject))
-            {
+            if ( this.ShouldBlockMessage(bodyAsText, e.MailItem.Message.Subject) ) {
                 source.RejectMessage(
                     this.GetRejectResponse());
             }
@@ -85,15 +148,25 @@ namespace MetroparkAgents
 
         private static void DebugLog(string what)
         {
-            try
-            {
-                StreamWriter SW;
-                SW = File.AppendText(log_file);
-                SW.WriteLine(DateTime.Now.ToUniversalTime() + "\n---------------------------\n\t" + what + "\n\n");
-                SW.Close();
+            DebugLog(what, "", "");
+        }
+
+        private static void DebugLog(string what, string domain_name, string whois_data)
+        {
+            try {
+                using ( StreamWriter SW = File.AppendText(log_file) ) {
+                    SW.WriteLine(DateTime.Now.ToUniversalTime() + "\n---------------------------\n\t" + what + "\n\n");
+                    SW.Close();
+                }
+
+                if ( domain_name != "" && whois_data != "" ) {
+                    StreamWriter SW = File.CreateText(domain_name + ".badwhois");
+                    SW.Write(whois_data);
+                    SW.Close();
+                }
+
             }
-            catch (Exception ex)
-            {
+            catch ( Exception ex ) {
                 System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", "Could not write to log: " + log_file + "\n" + ex.Message, System.Diagnostics.EventLogEntryType.Error);
             }
         }
@@ -105,17 +178,42 @@ namespace MetroparkAgents
             Regex rx = new Regex(url_regex);
             MatchCollection mc = rx.Matches(body);
 
-            foreach( Match submatch in mc )
-            {
-                if (IsYoungDomain(submatch.Groups[2].ToString()))
-                {
-                    DebugLog("Message blocked! Subject:\"" + subject + "\" Domain: " + submatch.Groups[2].ToString());
+            foreach ( Match submatch in mc ) {
+                try {
+                    string domain_name = submatch.Groups[2].ToString();
+                    if ( known_domains.ContainsKey(domain_name) ) {
+                        cached_hits++;
+                        throw new SpammyWhoisException(domain_name, "cached");
+                    }
+
+                    string whois_data = "";
+                    DoWhoisLookup(domain_name, out whois_data);
+
+                    //Annoymous == asshole
+                    if ( whois_data.Contains("whoisguard") ||
+                        whois_data.Contains("no match for") ||
+                        whois_data.Contains("not found:") )
+                        throw new SpammyWhoisException(domain_name, "anonymous");
+
+                    int age_in_days = GetAgeFromWhoisData(whois_data);
+                    if ( age_in_days < minimum_age )
+                        throw new SpammyWhoisException(domain_name, "too young");
+                }
+                catch ( SpammyWhoisException e ) {
+                    string domain_name = e.Domain;
+                    known_domains[domain_name] = true;
                     blocked++;
-                    if (blocked % 100 == 0)
-                    {
+                    if ( blocked % 100 == 0 ) {
                         System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", "Messages blocked so far: " + blocked + "\nErrors: " + whois_errors + "\nCached hits: " + cached_hits, System.Diagnostics.EventLogEntryType.Information);
                     }
+                    DebugLog("Message blocked! Reason: " + e.BlockReason + " Subject:\"" + subject + "\" Domain: " + submatch.Groups[2].ToString());
                     return true;
+                }
+                catch ( CannotWhoisCreationException e ) {
+                    whois_errors++;
+                    string error_message = "Could not whois on domain " + e.Domain;
+                    System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", error_message, System.Diagnostics.EventLogEntryType.Error);
+                    DebugLog(error_message, e.Domain, e.WhoisData);
                 }
             }
 
@@ -134,69 +232,38 @@ namespace MetroparkAgents
                 : YoungDomainSpamAgent.normalRejectResponse;
         }
 
-        private bool IsYoungDomain(string domain_name)
+        private int GetAgeFromWhoisData(string whois_data)
         {
-            string response = "";
-            if (known_domains.ContainsKey( domain_name) )
-            {
-                cached_hits++;
-                return known_domains[domain_name];
+            try {
+                Regex rx = new Regex(creation_regex);
+                Match created_match = rx.Match(whois_data);
+                if ( created_match.Success ) {
+                    DateTime created = DateTime.Parse(created_match.Groups[1].ToString());
+                    TimeSpan age = DateTime.Now - created;
 
-            }
-
-            try
-            {
-                //TODO: Consider throwing exception if whois fails...
-
-                if (DoWhoisLookup(domain_name, out response))
-                {
-                    Regex rx = new Regex(creation_regex);
-                    Match created_match = rx.Match(response);
-                    if (created_match.Success)
-                    {
-                        DateTime created = DateTime.Parse(created_match.Groups[1].ToString());
-                        TimeSpan age = DateTime.Now - created;
-
-                        if (age.Days < minimum_age)
-                        {
-                            known_domains[domain_name] = true;
-                            return true;
-                        }
-                        else
-                            known_domains[domain_name] = false;
-                    }
-                    else if (response.ToLower().Contains("no match for") || response.ToLower().Contains("not found:") )
-                    {  //This clause may be a bad thing...
-                        known_domains[domain_name] = true;
-                        return true;
-                    }
-                    else
-                    {
-                        DebugLog("Could not match created Date for domain " + domain_name + ": \n" + response);
-                    }
-
+                    return age.Days;
                 }
+                else
+                    throw new CannotWhoisCreationException(whois_data);
             }
-            catch (Exception e)
-            {
-                System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", "DateTime " + response, System.Diagnostics.EventLogEntryType.Error);
-                whois_errors++;
+            catch ( Exception e ) {
+                throw new CannotWhoisCreationException(whois_data);
             }
-
-            return false;
+            //Should be unreachable
+            throw new Exception("Unreachable code");
 
         }
 
         private string GetTLD(string domain_name)
         {
-            Regex tld_regex = new Regex( "[^\\.]+\\.(\\w+)");
+            Regex tld_regex = new Regex("[^\\.]+\\.(\\w+)");
 
-            Match tld_match = tld_regex.Match( domain_name );
+            Match tld_match = tld_regex.Match(domain_name);
 
             if ( tld_match.Success )
                 return tld_match.Groups[1].Value;
             else
-                throw new Exception( "Could not find TLD from domain!" );
+                throw new Exception("Could not find TLD from domain!");
 
         }
 
@@ -206,40 +273,44 @@ namespace MetroparkAgents
             bool bSuccess = false;
             string tld = GetTLD(strDomain);
             string strServer = GetWhoisServer(GetTLD(strDomain));
-            TcpClient tcpc = new TcpClient();
-            try
-            {
+            string strDomainToCheck = "";
+            bool first_pass = true;
+            while ( strServer != "" ) {
+                TcpClient tcpc = new TcpClient();
                 tcpc.Connect(strServer, 43);
-            }
-            catch (SocketException ex)
-            {
-                System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", "Could not connect to WHOIS server", System.Diagnostics.EventLogEntryType.Error);
-                throw;
-            }
-            if ( tld.ToLower() == "com" || tld.ToLower() == "net" )
-                strDomain = "=" + strDomain + "\r\n";
-            else
-                strDomain += "\r\n";
-            Byte[] arrDomain = Encoding.ASCII.GetBytes(strDomain.ToCharArray());
-            StringBuilder strBuilder = new StringBuilder();
-            bSuccess = true;
-            Stream s = tcpc.GetStream();
-            s.Write(arrDomain, 0, strDomain.Length);
+                if ( first_pass && tld.ToLower() == "com" || tld.ToLower() == "net" )
+                    strDomainToCheck = "=" + strDomain + "\r\n";
+                else
+                    strDomainToCheck = strDomain + "\r\n";
+                first_pass = false;
+                Byte[] arrDomain = Encoding.ASCII.GetBytes(strDomainToCheck.ToCharArray());
+                StringBuilder strBuilder = new StringBuilder();
+                bSuccess = true;
+                Stream s = tcpc.GetStream();
+                s.Write(arrDomain, 0, strDomainToCheck.Length);
 
-            StreamReader sr = new StreamReader(tcpc.GetStream(), Encoding.ASCII);
-            string strLine = null;
+                StreamReader sr = new StreamReader(tcpc.GetStream(), Encoding.ASCII);
+                string strLine = null;
 
-            while (null != (strLine = sr.ReadLine()))
-            {
-                strBuilder.Append(strLine + "\n");
-            }
-            tcpc.Close();
-            strResponse = strBuilder.ToString();
-            if (strResponse.Length == 0)
-            {
-                throw new Exception("No whois data");
-            }
+                while ( null != ( strLine = sr.ReadLine() ) ) {
+                    strBuilder.Append(strLine + "\n");
+                }
+                tcpc.Close();
+                strResponse = strBuilder.ToString().ToLower();
 
+                if ( strResponse.Length == 0 ) {
+                    throw new Exception("No whois data");
+                }
+
+                Regex match_real_whois = new Regex("whois\\s+server:\\s*([a-zA-Z0-9\\-\\.]+)");
+                Match real_whois = match_real_whois.Match(strResponse);
+
+                if ( real_whois.Success ) {
+                    strServer = real_whois.Groups[1].Value;
+                }
+                else
+                    strServer = "";
+            }
             return bSuccess;
         }
     }
