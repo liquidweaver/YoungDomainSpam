@@ -96,7 +96,7 @@ namespace MetroparkAgents
         //const string creation_regex = "(?:(?:creat[^\\d]+)|(?:registration date[\\:\\s]+))([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+?(?!regist))|(?:registration date[\\:\\s]+))([a-zA-Z\\:\\d ]+)\\r?\\n";
         //const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-  ]+?)\\r?\\n";
-        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,  ]+?)\\.?\\r?\\n";
+        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,\\.  ]+?)\\.?\\r?\\n";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
         string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy", "dd-MMM-yyyy HH:mm:ss' utc'" };
@@ -220,6 +220,7 @@ namespace MetroparkAgents
                 }
                 catch ( CannotWhoisCreationException e ) {
                     whois_errors++;
+                    known_domains[e.Domain] = false; //HACK: Temporarily bypass this domain so we don't snowball whois lookups
                     string error_message = "Could not parse creation date from whois for domain " + e.Domain;
                     System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", error_message, System.Diagnostics.EventLogEntryType.Error);
                     DebugLog(error_message, e.Domain, e.WhoisData);
@@ -282,45 +283,50 @@ namespace MetroparkAgents
 
         private void DoWhoisLookup(String strDomain, out String strResponse)
         {
-            strResponse = "none";
-            string tld = GetTLD(strDomain);
-            string strServer = GetWhoisServer(GetTLD(strDomain));
-            string strDomainToCheck = "";
-            bool first_pass = true;
-            while ( strServer != "" ) {
-                TcpClient tcpc = new TcpClient();
-                tcpc.Connect(strServer, 43);
-                if ( first_pass && tld.ToLower() == "com" || tld.ToLower() == "net" )
-                    strDomainToCheck = "=" + strDomain + "\r\n";
-                else
-                    strDomainToCheck = strDomain + "\r\n";
-                first_pass = false;
-                Byte[] arrDomain = Encoding.ASCII.GetBytes(strDomainToCheck.ToCharArray());
-                StringBuilder strBuilder = new StringBuilder();
-                Stream s = tcpc.GetStream();
-                s.Write(arrDomain, 0, strDomainToCheck.Length);
+            try {
+                strResponse = "none";
+                string tld = GetTLD(strDomain);
+                string strServer = GetWhoisServer(GetTLD(strDomain));
+                string strDomainToCheck = "";
+                bool first_pass = true;
+                while ( strServer != "" ) {
+                    TcpClient tcpc = new TcpClient();
+                    tcpc.Connect(strServer, 43);
+                    if ( first_pass && tld.ToLower() == "com" || tld.ToLower() == "net" )
+                        strDomainToCheck = "=" + strDomain + "\r\n";
+                    else
+                        strDomainToCheck = strDomain + "\r\n";
+                    first_pass = false;
+                    Byte[] arrDomain = Encoding.ASCII.GetBytes(strDomainToCheck.ToCharArray());
+                    StringBuilder strBuilder = new StringBuilder();
+                    Stream s = tcpc.GetStream();
+                    s.Write(arrDomain, 0, strDomainToCheck.Length);
 
-                StreamReader sr = new StreamReader(tcpc.GetStream(), Encoding.ASCII);
-                string strLine = null;
+                    StreamReader sr = new StreamReader(tcpc.GetStream(), Encoding.ASCII);
+                    string strLine = null;
 
-                while ( null != ( strLine = sr.ReadLine() ) ) {
-                    strBuilder.Append(strLine + "\n");
+                    while ( null != ( strLine = sr.ReadLine() ) ) {
+                        strBuilder.Append(strLine + "\n");
+                    }
+                    tcpc.Close();
+                    strResponse = strBuilder.ToString().ToLower();
+
+                    if ( strResponse.Length == 0 ) {
+                        throw new Exception("No whois data received from socket");
+                    }
+
+                    Regex match_real_whois = new Regex(Regex.Escape(strDomain) + real_whois_regex, RegexOptions.Singleline);
+                    Match real_whois = match_real_whois.Match(strResponse);
+
+                    if ( real_whois.Success ) {
+                        strServer = real_whois.Groups[1].Value;
+                    }
+                    else
+                        strServer = "";
                 }
-                tcpc.Close();
-                strResponse = strBuilder.ToString().ToLower();
-
-                if ( strResponse.Length == 0 ) {
-                    throw new Exception("No whois data");
-                }
-
-                Regex match_real_whois = new Regex(Regex.Escape(strDomain) + real_whois_regex, RegexOptions.Singleline);
-                Match real_whois = match_real_whois.Match(strResponse);
-
-                if ( real_whois.Success ) {
-                    strServer = real_whois.Groups[1].Value;
-                }
-                else
-                    strServer = "";
+            }
+            catch ( Exception e ) {
+                throw new CannotWhoisCreationException(strDomain, e.Message);
             }
         }
     }
