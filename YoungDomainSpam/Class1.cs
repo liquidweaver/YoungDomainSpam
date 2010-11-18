@@ -94,10 +94,12 @@ namespace MetroparkAgents
         //const string creation_regex = "(?:(?:creat[^:]*:)|(?:created on))\\s*([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+)|(?:registration date[\\:\\s]+))([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+?(?!regist))|(?:registration date[\\:\\s]+))([a-zA-Z\\:\\d ]+)\\r?\\n";
-        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-  ]+?)\\r?\\n";
+        //const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-  ]+?)\\r?\\n";
+        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,  ]+?)\\.?\\r?\\n";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
         string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy","dd-MMM-yyyy HH:mm:ss' utc'" };
+        string[] anonymous_triggers = { "whoisgaurd", "no match for", "not found:", "no records exist", "no domain (1)" };
 
         public string GetWhoisServer(string tld)
         {
@@ -108,7 +110,8 @@ namespace MetroparkAgents
                 return static_whois_server;
         }
 
-        const string log_file = "C:\\metropark_agents\\yds.log";
+        const string log_file_path = "C:\\metropark_agents\\";
+        const string log_file = "yds.log";
         const int minimum_age = 200; //Age, in days, a domain must exist to no be considered 'young'
         Dictionary<string, bool> known_domains = new Dictionary<string, bool>();
         int blocked = 0;
@@ -157,13 +160,13 @@ namespace MetroparkAgents
         private static void DebugLog(string what, string domain_name, string whois_data)
         {
             try {
-                using ( StreamWriter SW = File.AppendText(log_file) ) {
+                using ( StreamWriter SW = File.AppendText(log_file_path + log_file) ) {
                     SW.WriteLine(DateTime.Now.ToUniversalTime() + "\n---------------------------\n\t" + what + "\n\n");
                     SW.Close();
                 }
 
                 if ( domain_name != "" && whois_data != "" ) {
-                    StreamWriter SW = File.CreateText(domain_name + ".badwhois");
+                    StreamWriter SW = File.CreateText(log_file_path + domain_name + ".badwhois");
                     SW.Write(whois_data);
                     SW.Close();
                 }
@@ -184,20 +187,23 @@ namespace MetroparkAgents
             foreach ( Match submatch in mc ) {
                 try {
                     string domain_name = submatch.Groups[2].ToString();
-                    if ( known_domains.ContainsKey(domain_name) && known_domains[domain_name] == true ) {
-                        cached_hits++;
-                        throw new SpammyWhoisException(domain_name, "cached");
+                    if ( known_domains.ContainsKey(domain_name) ) {
+                        if ( known_domains[domain_name] == true ) {
+                            cached_hits++;
+                            throw new SpammyWhoisException(domain_name, "cached");
+                        }
+                        else
+                            continue;
                     }
 
                     string whois_data = "";
                     DoWhoisLookup(domain_name, out whois_data);
 
                     //Annoymous == asshole
-                    if ( whois_data.Contains("whoisguard") ||
-                        whois_data.Contains("no match for") ||
-                        whois_data.Contains("not found:") ||
-                        whois_data.Contains("no records exist") )
-                        throw new SpammyWhoisException(domain_name, "anonymous");
+                   foreach ( string anon_string in anonymous_triggers ) {
+                       if ( whois_data.Contains( anon_string ) )
+                           throw new SpammyWhoisException( domain_name, "anonymous - \"" + anon_string + "\"\n" + whois_data );
+                   }
 
                     int age_in_days = GetAgeFromWhoisData(domain_name, whois_data);
                     if ( age_in_days < minimum_age )
@@ -215,7 +221,7 @@ namespace MetroparkAgents
                 }
                 catch ( CannotWhoisCreationException e ) {
                     whois_errors++;
-                    string error_message = "Could not whois on domain " + e.Domain;
+                    string error_message = "Could not parse creation date from whois for domain " + e.Domain;
                     System.Diagnostics.EventLog.WriteEntry("YoungDomainSpamTransportAgent", error_message, System.Diagnostics.EventLogEntryType.Error);
                     DebugLog(error_message, e.Domain, e.WhoisData);
                 }
