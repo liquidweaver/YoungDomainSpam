@@ -133,5 +133,22 @@ namespace YDSUnitTests
             target.DoWhoisLookup(strDomain, out strResponse);
             Assert.AreNotEqual(string.Empty, strResponse);
         }
+
+        /// <summary>
+        ///A test for ShouldBlockMessage
+        ///</summary>
+        [TestMethod()]
+        [DeploymentItem("YoungDomainSpam.dll")]
+        public void ShouldBlockMessageTest()
+        {
+            YoungDomainSpamAgent_Accessor target = new YoungDomainSpamAgent_Accessor(); // TODO: Initialize to an appropriate value
+            bool expected = true;
+            bool actual;
+            string body = "A spammy message.\nHere, have a link: http://hitfin.com/yay"; // TODO: Initialize to an appropriate value
+            string subject = string.Empty; // TODO: Initialize to an appropriate value
+            actual = target.ShouldBlockMessage(body, subject);
+            Assert.AreEqual(actual, expected);
+        }
+
     }
 }

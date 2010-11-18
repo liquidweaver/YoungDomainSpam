@@ -99,8 +99,9 @@ namespace MetroparkAgents
         const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,  ]+?)\\.?\\r?\\n";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
-        string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy","dd-MMM-yyyy HH:mm:ss' utc'" };
-        string[] anonymous_triggers = { "whoisgaurd", "no match for", "not found:", "no records exist", "no domain (1)" };
+        string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy", "dd-MMM-yyyy HH:mm:ss' utc'" };
+        string[] anonymous_triggers = { "whoisguard", "no match for", "not found:", "no records exist", "no domain (1)" };
+        string[] known_good_domains = { "microsoft.com","w3c.org","w3.org","yahoo.com","gmail.com", "google.com","facebook.com","myspace.com","twitter.com","newegg.com", "metropark.com" };
 
         public string GetWhoisServer(string tld)
         {
@@ -129,13 +130,10 @@ namespace MetroparkAgents
         {
             this.OnEndOfData += new EndOfDataEventHandler(
                 this.OnEndOfDataHandler);
-            known_domains.Add("microsoft.com", false);
-            known_domains.Add("w3c.org", false);
-            known_domains.Add("w3.org", false);
-            known_domains.Add("yahoo.com", false);
-            known_domains.Add("gmail.com", false);
-            known_domains.Add("google.com", false);
-            known_domains.Add("facebook.com", false);
+
+            foreach ( string good_domain in known_good_domains ) {
+                known_domains.Add(good_domain, false);
+            }
         }
 
         private void OnEndOfDataHandler(
@@ -201,10 +199,10 @@ namespace MetroparkAgents
                     DoWhoisLookup(domain_name, out whois_data);
 
                     //Annoymous == asshole
-                   foreach ( string anon_string in anonymous_triggers ) {
-                       if ( whois_data.Contains( anon_string ) )
-                           throw new SpammyWhoisException( domain_name, "anonymous - \"" + anon_string + "\"\n" + whois_data );
-                   }
+                    foreach ( string anon_string in anonymous_triggers ) {
+                        if ( whois_data.Contains(anon_string) )
+                            throw new SpammyWhoisException(domain_name, "anonymous - \"" + anon_string + "\"\n" + whois_data);
+                    }
 
                     int age_in_days = GetAgeFromWhoisData(domain_name, whois_data);
                     if ( age_in_days < minimum_age )
@@ -315,7 +313,7 @@ namespace MetroparkAgents
                     throw new Exception("No whois data");
                 }
 
-                Regex match_real_whois = new Regex(Regex.Escape( strDomain ) +  real_whois_regex, RegexOptions.Singleline);
+                Regex match_real_whois = new Regex(Regex.Escape(strDomain) + real_whois_regex, RegexOptions.Singleline);
                 Match real_whois = match_real_whois.Match(strResponse);
 
                 if ( real_whois.Success ) {
