@@ -92,9 +92,12 @@ namespace MetroparkAgents
     {
         const string url_regex = "http\\://([a-zA-Z0-9\\-\\.]+\\.)*([a-zA-Z0-9\\-]+\\.(?:[a-zA-Z]{2,4})|(?:co.uk))(/\\S*)?";
         //const string creation_regex = "(?:(?:creat[^:]*:)|(?:created on))\\s*([\\w\\d\\-]+)";
-        const string creation_regex = "creat[^\\d]+(\\d+[\\w\\d\\-]+)";
+        //const string creation_regex = "(?:(?:creat[^\\d]+)|(?:registration date[\\:\\s]+))([\\w\\d\\-]+)";
+        //const string creation_regex = "(?:(?:creat[^\\d]+?(?!regist))|(?:registration date[\\:\\s]+))([a-zA-Z\\:\\d ]+)\\r?\\n";
+        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-  ]+?)\\r?\\n";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
+        string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy","dd-MMM-yyyy HH:mm:ss' utc'" };
 
         public string GetWhoisServer(string tld)
         {
@@ -181,7 +184,7 @@ namespace MetroparkAgents
             foreach ( Match submatch in mc ) {
                 try {
                     string domain_name = submatch.Groups[2].ToString();
-                    if ( known_domains.ContainsKey(domain_name) ) {
+                    if ( known_domains.ContainsKey(domain_name) && known_domains[domain_name] == true ) {
                         cached_hits++;
                         throw new SpammyWhoisException(domain_name, "cached");
                     }
@@ -192,10 +195,11 @@ namespace MetroparkAgents
                     //Annoymous == asshole
                     if ( whois_data.Contains("whoisguard") ||
                         whois_data.Contains("no match for") ||
-                        whois_data.Contains("not found:") )
+                        whois_data.Contains("not found:") ||
+                        whois_data.Contains("no records exist") )
                         throw new SpammyWhoisException(domain_name, "anonymous");
 
-                    int age_in_days = GetAgeFromWhoisData(whois_data);
+                    int age_in_days = GetAgeFromWhoisData(domain_name, whois_data);
                     if ( age_in_days < minimum_age )
                         throw new SpammyWhoisException(domain_name, "too young");
                 }
@@ -232,23 +236,27 @@ namespace MetroparkAgents
                 : YoungDomainSpamAgent.normalRejectResponse;
         }
 
-        private int GetAgeFromWhoisData(string whois_data)
+        private int GetAgeFromWhoisData(string domain, string whois_data)
         {
-            try {
-                Regex rx = new Regex(creation_regex);
-                Match created_match = rx.Match(whois_data);
-                if ( created_match.Success ) {
-                    DateTime created = DateTime.Parse(created_match.Groups[1].ToString());
-                    TimeSpan age = DateTime.Now - created;
+            Regex rx = new Regex(creation_regex);
+            Match created_match = rx.Match(whois_data);
+            if ( created_match.Success ) {
+                DateTime created;
+                if ( !DateTime.TryParse(created_match.Groups[1].ToString(), out created) )
+                    if ( !DateTime.TryParseExact(created_match.Groups[1].ToString(),
+                                                    alternative_time_formats,
+                                                    new System.Globalization.CultureInfo("en-US"),
+                                                    System.Globalization.DateTimeStyles.None,
+                                                    out created) )
+                        throw new CannotWhoisCreationException(domain, whois_data);
 
-                    return age.Days;
-                }
-                else
-                    throw new CannotWhoisCreationException(whois_data);
+                TimeSpan age = DateTime.Now - created;
+
+                return age.Days;
             }
-            catch ( Exception e ) {
-                throw new CannotWhoisCreationException(whois_data);
-            }
+            else
+                throw new CannotWhoisCreationException(domain, whois_data);
+
             //Should be unreachable
             throw new Exception("Unreachable code");
 
@@ -256,7 +264,7 @@ namespace MetroparkAgents
 
         private string GetTLD(string domain_name)
         {
-            Regex tld_regex = new Regex("[^\\.]+\\.(\\w+)");
+            Regex tld_regex = new Regex("[^\\.]+\\.((?:co.uk)|(?:\\w+))");
 
             Match tld_match = tld_regex.Match(domain_name);
 
@@ -267,10 +275,9 @@ namespace MetroparkAgents
 
         }
 
-        private bool DoWhoisLookup(String strDomain, out String strResponse)
+        private void DoWhoisLookup(String strDomain, out String strResponse)
         {
             strResponse = "none";
-            bool bSuccess = false;
             string tld = GetTLD(strDomain);
             string strServer = GetWhoisServer(GetTLD(strDomain));
             string strDomainToCheck = "";
@@ -285,7 +292,6 @@ namespace MetroparkAgents
                 first_pass = false;
                 Byte[] arrDomain = Encoding.ASCII.GetBytes(strDomainToCheck.ToCharArray());
                 StringBuilder strBuilder = new StringBuilder();
-                bSuccess = true;
                 Stream s = tcpc.GetStream();
                 s.Write(arrDomain, 0, strDomainToCheck.Length);
 
@@ -311,7 +317,6 @@ namespace MetroparkAgents
                 else
                     strServer = "";
             }
-            return bSuccess;
         }
     }
 

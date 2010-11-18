@@ -1,0 +1,31 @@
+% hello, this is the domreg whois service.
+%
+% by submitting a query you agree not to use the information made
+% available to:
+% - allow, enable or otherwise support the transmission of unsolicited,
+%   commercial advertising or other solicitations whether via email or
+%   otherwise;
+% - target advertising in any possible way;
+% - to cause nuisance in any possible way to the registrants by sending
+%   (whether by automated, electronic processes capable of enabling
+%   high volumes or other possible means) messages to them.
+%
+% version 0.3
+%
+% for more information please visit http://whois.domreg.lt
+%
+domain:			gl8.lt
+status:			registered
+registered:		2009-12-08
+%
+registrar:		uab "elneta"
+registrar website:	http://www.elnet.lt
+registrar email:	info@elnet.lt
+%
+%
+contact organization:	uab "elneta"
+contact email:		domenai@elnet.lt
+%
+nameserver:		ns.elnet.lt	
+nameserver:		ns2.elnet.lt	
+nameserver:		ns2.domreg.lt
