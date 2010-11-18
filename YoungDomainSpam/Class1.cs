@@ -96,10 +96,10 @@ namespace MetroparkAgents
         //const string creation_regex = "(?:(?:creat[^\\d]+)|(?:registration date[\\:\\s]+))([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+?(?!regist))|(?:registration date[\\:\\s]+))([a-zA-Z\\:\\d ]+)\\r?\\n";
         //const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-  ]+?)\\r?\\n";
-        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,\\.  ]+?)\\.?\\r?\\n";
+        const string creation_regex = "(?:(?:creation date\\:\\s*)|(?:created on[ ]*\\.*?\\:\\s*)|(?:registration date[\\:\\s]+)|(?:registered\\:[\\s]*))([a-zA-Z\\:\\d\\-,\\./  ]+?)\\.?\\r?\\n";
         const bool use_whois_servers_net = true;
         const string static_whois_server = "whois.arin.net";
-        string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy", "dd-MMM-yyyy HH:mm:ss' utc'" };
+        string[] alternative_time_formats = { "ddd MMM dd HH:mm:ss' gmt 'yyyy", "dd-MMM-yyyy HH:mm:ss' utc'", "dd/MM/yyyy" };
         string[] anonymous_triggers = { "whoisguard", "no match for", "not found:", "no records exist", "no domain (1)" };
         string[] known_good_domains = { "microsoft.com","w3c.org","w3.org","yahoo.com","gmail.com", "google.com","facebook.com","myspace.com","twitter.com","newegg.com", "metropark.com" };
 

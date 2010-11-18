@@ -1,0 +1,94 @@
+%%
+%% this is the afnic whois server.
+%%
+%% complete date format : dd/mm/yyyy
+%% short date format    : dd/mm
+%% version              : frnic-2.5
+%%
+%% rights restricted by copyright.
+%% see http://www.afnic.fr/afnic/web/mentions-legales-whois_en
+%%
+%% use '-h' option to obtain more information about this service.
+%%
+%% [66.104.60.6 request] >> serveurbis-jm.fr
+%%
+%% rl net [##########] - rl ip [#########.]
+%%
+
+domain:      serveurbis-jm.fr
+status:      active
+hold:        no
+holder-c:    da3124-frnic
+admin-c:     fp4142-frnic
+tech-c:      af307-frnic
+zone-c:      nfc1-frnic
+nsl-id:      nsl5030-frnic
+registrar:   amen / agence des m?dias num?riques
+anniversary: 23/04
+created:     23/04/2010
+last-update: 23/04/2010
+source:      frnic
+
+ns-list:     nsl5030-frnic
+nserver:     ns1.amenworld.com
+nserver:     ns2.amenworld.com
+source:      frnic
+
+registrar:   amen / agence des m?dias num?riques
+type:        isp option 1
+address:     12-14, rond-point des champs elys?es
+address:     paris
+country:     fr
+phone:       0 892 55 66 77
+fax-no:      +33 1 40 87 76 89
+e-mail:      afnic@amen.fr
+website:     http://www.amen.fr
+anonymous:   no
+registered:  17/01/1999
+source:      frnic
+
+nic-hdl:     da3124-frnic
+type:        organization
+contact:     devis-avis
+address:     devis-avis
+address:     57, parc expobat - plan de campagne
+address:     13480 cabri?s
+country:     fr
+phone:       +33 4 86 64 81 00
+e-mail:      florian.pesch@devis-avis.com
+changed:     27/04/2010 nic@nic.fr
+anonymous:   no
+obsoleted:   no
+idstatus:    ok
+source:      frnic
+
+nic-hdl:     fp4142-frnic
+type:        person
+contact:     florian pesch
+address:     florian pesch
+address:     57, parc expobat - plan de campagne
+address:     13480 cabri?s
+country:     fr
+phone:       +33 4 86 64 81 00
+e-mail:      florian.pesch@devis-avis.com
+changed:     23/04/2010 nic@nic.fr
+anonymous:   no
+obsoleted:   no
+source:      frnic
+
+nic-hdl:     af307-frnic
+type:        role
+contact:     amen france
+address:     departement noms de domaine
+address:     12, rond-point des champs-elysees
+address:     75008 paris
+country:     fr
+phone:       +33 8 92 55 66 77
+e-mail:      afnic@amen.fr
+admin-c:     af307-frnic
+tech-c:      af307-frnic
+changed:     22/08/2008 afnic@amen.fr
+anonymous:   no
+obsoleted:   no
+source:      frnic
+

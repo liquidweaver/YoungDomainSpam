@@ -1,0 +1,103 @@
+%%
+%% this is the afnic whois server.
+%%
+%% complete date format : dd/mm/yyyy
+%% short date format    : dd/mm
+%% version              : frnic-2.5
+%%
+%% rights restricted by copyright.
+%% see http://www.afnic.fr/afnic/web/mentions-legales-whois_en
+%%
+%% use '-h' option to obtain more information about this service.
+%%
+%% [66.104.60.6 request] >> weborama.fr
+%%
+%% rl net [##########] - rl ip [########..]
+%%
+
+domain:      weborama.fr
+status:      active
+hold:        no
+holder-c:    w1039-frnic
+admin-c:     fc1622-frnic
+tech-c:      gr283-frnic
+zone-c:      nfc1-frnic
+nsl-id:      nsl41486-frnic
+registrar:   gandi
+anniversary: 30/10
+created:     04/06/1998
+last-update: 03/09/2010
+source:      frnic
+
+ns-list:     nsl41486-frnic
+nserver:     nns1.weborama.fr [217.117.154.40]
+nserver:     ns3.weborama.fr [217.117.148.40]
+nserver:     ns4.weborama.fr [91.216.195.40]
+source:      frnic
+
+registrar:   gandi
+type:        isp option 1
+address:     15 place de la nation
+address:     paris
+country:     fr
+phone:       +33 1 43 73 78 51
+fax-no:      +33 1 43 73 18 51
+website:     http://www.gandi.net
+anonymous:   no
+registered:  09/03/2004
+source:      frnic
+
+nic-hdl:     fc1622-frnic
+type:        person
+contact:     francois chassaing
+address:     weborama
+address:     15, rue clavel
+address:     75019 paris
+country:     fr
+phone:       +33 1 53 19 21 40
+fax-no:      +33 1 53 19 21 41
+e-mail:      dns@weborama.com
+changed:     17/07/2009 nic@nic.fr
+anonymous:   no
+obsoleted:   no
+source:      frnic
+
+nic-hdl:     gr283-frnic
+type:        role
+contact:     gandi role
+address:     gandi
+address:     15, place de la nation
+address:     75011 paris
+country:     fr
+e-mail:      noc@gandi.net
+trouble:     -------------------------------------------------
+trouble:     gandi is an icann accredited registrar
+trouble:     for more information:
+trouble:     web:   http://www.gandi.net
+trouble:     -------------------------------------------------
+trouble:     - network troubles: noc@gandi.net
+trouble:     - spam:             abuse@gandi.net
+trouble:     -------------------------------------------------
+admin-c:     nl346-frnic
+tech-c:      nl346-frnic
+tech-c:      tuf1-frnic
+notify:      noc@gandi.net
+changed:     03/03/2006 noc@gandi.net
+anonymous:   no
+obsoleted:   no
+source:      frnic
+
+nic-hdl:     w1039-frnic
+type:        organization
+contact:     weborama
+address:     15, rue clavel
+address:     75019 paris
+country:     fr
+phone:       +33 1 53 19 21 40
+e-mail:      55d73708c3a77a65124f280d481a3ced-w491@contact.gandi.net
+changed:     09/10/2008 whoismaster@nic.fr
+anonymous:   no
+obsoleted:   no
+idstatus:    ok
+source:      frnic
+
