@@ -91,6 +91,7 @@ namespace MetroparkAgents
     public class YoungDomainSpamAgent : SmtpReceiveAgent
     {
         const string url_regex = "http\\://([a-zA-Z0-9\\-\\.]+\\.)*([a-zA-Z0-9\\-]+\\.(?:[a-zA-Z]{2,4})|(?:co.uk))(/\\S*)?";
+        const string real_whois_regex = "\\r?\\n.+whois\\s+server:\\s*([a-zA-Z0-9\\-\\.]+)";
         //const string creation_regex = "(?:(?:creat[^:]*:)|(?:created on))\\s*([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+)|(?:registration date[\\:\\s]+))([\\w\\d\\-]+)";
         //const string creation_regex = "(?:(?:creat[^\\d]+?(?!regist))|(?:registration date[\\:\\s]+))([a-zA-Z\\:\\d ]+)\\r?\\n";
@@ -314,7 +315,7 @@ namespace MetroparkAgents
                     throw new Exception("No whois data");
                 }
 
-                Regex match_real_whois = new Regex("whois\\s+server:\\s*([a-zA-Z0-9\\-\\.]+)");
+                Regex match_real_whois = new Regex(Regex.Escape( strDomain ) +  real_whois_regex, RegexOptions.Singleline);
                 Match real_whois = match_real_whois.Match(strResponse);
 
                 if ( real_whois.Success ) {

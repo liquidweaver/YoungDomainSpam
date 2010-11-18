@@ -128,7 +128,7 @@ namespace YDSUnitTests
         public void DoWhoisLookupTest()
         {
             YoungDomainSpamAgent_Accessor target = new YoungDomainSpamAgent_Accessor(); // TODO: Initialize to an appropriate value
-            string strDomain = "metropark.com"; // TODO: Initialize to an appropriate value
+            string strDomain = "twitter.com"; // TODO: Initialize to an appropriate value
             string strResponse = string.Empty; // TODO: Initialize to an appropriate value
             target.DoWhoisLookup(strDomain, out strResponse);
             Assert.AreNotEqual(string.Empty, strResponse);
